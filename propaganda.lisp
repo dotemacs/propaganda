@@ -16,7 +16,8 @@
         :access-token (getenv "MASTODON_ACCESS_TOKEN")
         :db-file (or (getenv "DATABASE_PATH") "propaganda.db")
         :feeds '("http://abcl-dev.blogspot.com/atom.xml"
-                 "https://journal.paoloamoroso.com/tag:CommonLisp/feed/"
+                 ;; Planet Lisp uses "https://journal.paoloamoroso.com/tag:CommonLisp/feed/"
+                 "https://journal.paoloamoroso.com/tag:Lisp/feed/"
                  "http://within-parens.blogspot.com/atom.xml"
                  "https://lispnews.wordpress.com/feed/atom/"
                  "https://40ants.com/lisp-project-of-the-day/rss.xml"
