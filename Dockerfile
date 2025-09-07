@@ -48,7 +48,7 @@ RUN sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
 
 # Runtime stage
 FROM alpine:latest
-RUN apk add --no-cache gcompat && adduser -D -s /bin/false propaganda
+RUN apk add --no-cache gcompat zstd && adduser -D -s /bin/false propaganda
 COPY --from=builder /app/propaganda /propaganda
 RUN chmod +x /propaganda && chown propaganda:propaganda /propaganda
 USER propaganda
