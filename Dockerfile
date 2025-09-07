@@ -48,7 +48,7 @@ RUN sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
 
 # Runtime stage
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libzstd1 && \
+RUN apt-get update && apt-get install -y --no-install-recommends libzstd1 libssl3 && \
     rm -rf /var/lib/apt/lists/* && \
     adduser --disabled-login --gecos "" --shell /bin/false propaganda
 COPY --from=builder /app/propaganda /propaganda
