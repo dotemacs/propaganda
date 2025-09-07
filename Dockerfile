@@ -47,11 +47,11 @@ RUN sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
 
 
 # Runtime stage
-FROM alpine:latest
-RUN apk add --no-cache gcompat zstd && adduser -D -s /bin/false propaganda
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends libzstd1 && \
+    rm -rf /var/lib/apt/lists/* && \
+    adduser --disabled-login --gecos "" --shell /bin/false propaganda
 COPY --from=builder /app/propaganda /propaganda
 RUN chmod +x /propaganda && chown propaganda:propaganda /propaganda
 USER propaganda
-VOLUME ["/var/lib/propaganda"]
-ENV DATABASE_PATH=/var/lib/propaganda/propaganda.db
 CMD ["/bin/sh", "-c", "while true; do /propaganda; sleep 3600; done"]
