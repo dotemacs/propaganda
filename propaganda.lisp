@@ -202,16 +202,23 @@ omitted."
 ;; tooting
 
 (defun post-toot (toot)
-  (let ((access-token (concatenate 'string "Bearer " (getf *config* :access-token))))
-    (multiple-value-bind (body status-code headers uri stream)
-        (http:post (getf *config* :masto-endpoint)
-                   :headers `(("Authorization" . ,access-token))
-                   :content `(("status" . ,toot)
-                              ("visibility" . "public")))
-      (declare (ignore headers uri stream))
-      (if (= status-code 200)
-          (format t "Success! Response: ~A~%" body)
-          (format t "Failed with status: ~A~%" status-code)))))
+  (let* ((token (getf *config* :access-token))
+         (endpoint (getf *config* :masto-endpoint)))
+    (cond
+      ((or (null token) (zerop (length token)))
+       (format t "Missing MASTODON_ACCESS_TOKEN; skipping toot.~%"))
+      (t
+       (handler-case
+           (multiple-value-bind (body status-code headers)
+               (http:post endpoint
+                          :headers `(("Authorization" . ,(format nil "Bearer ~A" token)))
+                          :content `(("status" . ,toot)
+                                     ("visibility" . "public")))
+             (declare (ignore headers))
+             (format t "Mastodon POST status: ~A~%" status-code)
+             (when body (format t "Mastodon response: ~A~%" body)))
+         (error (e)
+           (format t "Error posting toot: ~A~%" e)))))))
 
 (defun format-toot (title link)
   "Formats the `toot' & `link' for tooting"
