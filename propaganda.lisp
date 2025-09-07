@@ -77,6 +77,13 @@
                  "https://mstmetent.blogspot.com/feeds/posts/default"
                  "http://langnostic.inaimathi.ca/feed/atom/by-tag/common-lisp")))
 
+(defun load-runtime-config ()
+  "Refresh env-driven values into `*config*` at runtime."
+  (setf (getf *config* :access-token) (getenv "MASTODON_ACCESS_TOKEN")
+        (getf *config* :redis-host) (getenv "REDIS_HOST")
+        (getf *config* :redis-port) (getenv "REDIS_PORT")
+        (getf *config* :redis-password) (getenv "REDIS_PASSWORD")))
+
 ;; Redis-backed persistence
 
 (defvar *redis-connection* nil)
@@ -299,4 +306,5 @@ Google's Blogger."
 
 (defun main ()
   "Main entry point for the propaganda executable."
+  (load-runtime-config)
   (check-all-feeds-for-updates))
