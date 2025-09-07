@@ -35,7 +35,7 @@ RUN curl -O https://beta.quicklisp.org/quicklisp.lisp && \
 
 COPY . .
 RUN sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
-    --eval "(ql:quickload '(:dexador :cl-ppcre :feeder :arrows :puri :plump))" \
+    --eval "(ql:quickload '(:dexador :cl-ppcre :feeder :arrows :puri :plump :cl-redis))" \
     --eval "(push #p\"/app/\" asdf:*central-registry*)" \
     --eval "(asdf:load-system :propaganda)" \
     --eval "(sb-ext:save-lisp-and-die \"propaganda\" :executable t :toplevel #'propaganda:main :compression t)" \

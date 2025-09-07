@@ -11,7 +11,8 @@
                #:cl-ppcre
                #:arrows
                #:puri
-               #:plump)
+               #:plump
+               #:cl-redis)
   :components ((:file "propaganda"))
   :build-operation "program-op"
   :build-pathname "propaganda"

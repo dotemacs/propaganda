@@ -7,7 +7,7 @@ Planet Lisp feed tooter: https://functional.cafe/@lisp
 Setup in the REPL
 
 ```lisp
-(ql:quickload '(:dexador :cl-ppcre :feeder :arrows :puri :plump))
+(ql:quickload '(:dexador :cl-ppcre :feeder :arrows :puri :plump :cl-redis))
 (push #p"/Users/alex/dev/lisp/propaganda/" asdf:*central-registry*)
 (asdf:load-system "propaganda")
 ```
@@ -41,7 +41,9 @@ sbcl --eval "(ql:quickload '(:dexador :cl-ppcre :feeder :arrows :puri :plump))" 
 The following env vars are needed:
 
 - `MASTODON_ACCESS_TOKEN`
-- `DATABASE_PATH`
+- `REDIS_HOST`
+- `REDIS_PORT`
+- `REDIS_PASSWORD`
 
 ### Docker
 
@@ -51,12 +53,13 @@ The following env vars are needed:
 
 #### Create .env
 
-    DATABASE_PATH=/var/lib/propaganda/propaganda.db
     MASTODON_ACCESS_TOKEN=your_actual_token_here
+    REDIS_HOST=redis-host
+    REDIS_PORT=redis-port
+    REDIS_PASSWORD=redis-password
 
 #### Run
 
     docker run -d --name propaganda-service \
-      -v propaganda-data:/var/lib/propaganda \
       --env-file .env \
       propaganda

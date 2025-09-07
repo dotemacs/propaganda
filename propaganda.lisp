@@ -14,7 +14,9 @@
 (defparameter *config*
   (list :masto-endpoint "https://functional.cafe/api/v1/statuses"
         :access-token (getenv "MASTODON_ACCESS_TOKEN")
-        :db-file (or (getenv "DATABASE_PATH") "propaganda.db")
+        :redis-host (getenv "REDIS_HOST")
+        :redis-port (getenv "REDIS_PORT")
+        :redis-password (getenv "REDIS_PASSWORD")
         :feeds '("http://abcl-dev.blogspot.com/atom.xml"
                  ;; Planet Lisp uses "https://journal.paoloamoroso.com/tag:CommonLisp/feed/"
                  "https://journal.paoloamoroso.com/tag:Lisp/feed/"
@@ -75,33 +77,70 @@
                  "https://mstmetent.blogspot.com/feeds/posts/default"
                  "http://langnostic.inaimathi.ca/feed/atom/by-tag/common-lisp")))
 
+;; Redis-backed persistence
+
+(defvar *redis-connection* nil)
+
+(defun parse-integer-or-default (value default)
+  (handler-case
+      (if (and value (plusp (length value)))
+          (parse-integer value)
+          default)
+    (error () default)))
+
+(defun ensure-redis-connection ()
+  "Ensure a Redis connection is available and return it."
+  (or *redis-connection*
+      (let* ((host (or (getf *config* :redis-host) "127.0.0.1"))
+             (port (parse-integer-or-default (getf *config* :redis-port) 6379))
+             (password (getf *config* :redis-password)))
+        (setf *redis-connection*
+              (if (and password (plusp (length password)))
+                  (redis:connect :host host :port port :auth password)
+                  (redis:connect :host host :port port))))))
+
+(defparameter +redis-feed-prefix+ "propaganda:feed:")
+
+(defun feed-key (url)
+  (concatenate 'string +redis-feed-prefix+ url))
+
 (defun load-feeds-db ()
-  "Load feeds data from local file."
-  (let ((db-file (getf *config* :db-file)))
-    (if (probe-file db-file)
-        (with-open-file (stream db-file :direction :input)
-          (read stream))
-        '())))
+  "Load feeds data from Redis as an alist of (url . latest-date)."
+  (ensure-redis-connection)
+  (let ((keys (or (redis::keys (concatenate 'string +redis-feed-prefix+ "*")) '())))
+    (loop for key in keys
+          for url = (subseq key (length +redis-feed-prefix+))
+          collect (cons url (redis::get key)))))
 
 (defun save-feeds-db (data)
-  "Save feeds data to local file."
-  (let ((db-file (getf *config* :db-file)))
-    (with-open-file (stream db-file :direction :output :if-exists :supersede)
-      (prin1 data stream))
+  "Save feeds data to Redis. Accepts an alist of (url . latest-date)."
+  (ensure-redis-connection)
+  (let* ((desired-urls (mapcar #'car data))
+         (current-keys (or (redis::keys (concatenate 'string +redis-feed-prefix+ "*")) '())))
+    ;; Upsert desired entries
+    (dolist (pair data)
+      (let* ((url (car pair))
+             (latest (cdr pair))
+             (key (feed-key url)))
+        (when url
+          (redis::set key (or latest "")))))
+    ;; Remove stale entries not present in DATA
+    (dolist (key current-keys)
+      (let ((url (subseq key (length +redis-feed-prefix+))))
+        (unless (find url desired-urls :test #'string=)
+          (redis::del key))))
     data))
 
 (defun get-feed-info (url)
-  "Get latest post date for a specific feed URL."
-  (cdr (assoc url (load-feeds-db) :test #'string=)))
+  "Get latest post date for a specific feed URL from Redis."
+  (ensure-redis-connection)
+  (redis::get (feed-key url)))
 
 (defun update-feed-info (url latest-post-date)
-  "Update latest post date for a specific feed."
-  (let* ((feeds (load-feeds-db))
-         (existing (assoc url feeds :test #'string=)))
-    (if existing
-        (setf (cdr existing) latest-post-date)
-        (push (cons url latest-post-date) feeds))
-    (save-feeds-db feeds)))
+  "Update latest post date for a specific feed in Redis."
+  (ensure-redis-connection)
+  (redis::set (feed-key url) latest-post-date)
+  (load-feeds-db))
 
 (defun detect-feed-format (feed)
   "Detect if the `feed' is RSS or Atom.
