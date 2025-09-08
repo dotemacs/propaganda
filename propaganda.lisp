@@ -75,7 +75,9 @@
                  "https://lisp-journey.gitlab.io/index.xml"
                  "http://blog.funcall.org/feed.xml"
                  "https://mstmetent.blogspot.com/feeds/posts/default"
-                 "http://langnostic.inaimathi.ca/feed/atom/by-tag/common-lisp")))
+                 "http://langnostic.inaimathi.ca/feed/atom/by-tag/common-lisp"
+                 ;; Not on Planet Lisp
+                 "https://dev.to/feed/vindarel")))
 
 (defun load-runtime-config ()
   "Refresh env-driven values into `*config*` at runtime."
