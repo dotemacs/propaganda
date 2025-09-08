@@ -244,7 +244,7 @@ omitted."
           (plump:text (elt html-body 0)))))))
 
 (defun lisp-content-p (content)
-  (search "lisp" (string-downcase content)))
+  (search "lisp" content :test #'string-equal))
 
 ;; clean up fractional seconds
 
