@@ -4,7 +4,7 @@
   (:local-nicknames (#:http :dex))
   (:local-nicknames (#:feeder :org.shirakumo.feeder))
   (:import-from :uiop #:getenv)
-  (:import-from :local-time #:timestamp< #:universal-to-timestamp)
+  (:import-from :local-time #:parse-timestring #:timestamp< #:timestamp=)
   (:import-from :cl-ppcre #:scan)
   (:import-from :arrows #:-> #:->>)
   (:export #:main))
@@ -251,50 +251,62 @@ Google's Blogger."
    "([Tt]\\d\\d:\\d\\d:\\d\\d)\\.\\d+(Z|[+-]\\d\\d:\\d\\d)"
    xml "\\1\\2"))
 
+;; entries
+
+(defun extract-entry-values (entry)
+  "For an `entry', return its title, url, date & confirmation if the
+entry has lisp content."
+  (values (let ((title (feeder:title entry)))
+            (if (stringp title)
+                title
+                (plump:text title)))
+          (-> entry feeder:link feeder:url sanitize-url)
+          (-> entry feeder:published-on local-time:to-rfc3339-timestring)
+          (-> entry feeder:content plump:text lisp-content-p)))
+
+;; date comparison
+
+(defun date1<date2 (date1 date2)
+  (timestamp< (parse-timestring date1) (parse-timestring date2)))
+
+(defun date1=date2 (date1 date2)
+  (timestamp= (parse-timestring date1) (parse-timestring date2)))
+
 ;; process all
 
 (defun check-all-feeds-for-updates ()
   "Check all feeds for newer posts than what's recorded in the db."
   (let ((feeds (load-feeds-db)))
     (dolist (feed feeds)
-      (let ((url (car feed))
+      (let ((feed-url (car feed))
             (stored-date (cdr feed)))
-        (format t "processing: ~A~%" url)
+        (format t "processing: ~A~%" feed-url)
         (handler-case
-            (let* ((response (http:get url))
+            (let* ((response (http:get feed-url))
                    (parsed-feed (handler-bind ((warning #'muffle-warning))
                                   (-> response
                                       strip-fractional-seconds
                                       (feeder:parse-feed t))))
-                   (all-entries (-> parsed-feed first feeder:content))
-                   (newest-date stored-date)
-                   (found-new-posts nil))
-              (dolist (entry all-entries)
-                (let* ((entry-date (feeder:published-on entry))
-                       (entry-link (feeder:link entry))
-                       (entry-title (feeder:title entry))
-                       (entry-title-read (if (stringp entry-title)
-                                             entry-title (plump:text entry-title)))
-                       (date-string (local-time:format-timestring nil entry-date))
-                       (url (-> entry-link feeder:url sanitize-url))
-                       (lisp-content (-> entry feeder:content lisp-content-p)))
-                  (when (and lisp-content
-                             (or (null stored-date)
-                                 (string> date-string stored-date)))
-                    (setf found-new-posts t)
-                    (format t "New post found in feed ~A~%" url)
+                   (newest-date stored-date))
+              (dolist (entry (-> parsed-feed first feeder:content))
+                (multiple-value-bind (title url date lisp-content)
+                    (extract-entry-values entry)
+                  (when (and lisp-content (or (null stored-date)
+                                              (date1<date2 stored-date date)))
+                    (format t "New post found in feed ~A~%" feed-url)
                     (format t "  Lisp content: ~A~%" lisp-content)
-                    (format t "  Post title: ~A~%" entry-title-read)
-                    (format t "  Post date: ~A~%" date-string)
+                    (format t "  Post title: ~A~%" title)
+                    (format t "  Post date: ~A~%" date)
                     (format t "  Post URL: ~A~%" url)
-                    (format t "  toot: ~A~%" (format-toot entry-title-read url))
+                    (format t "  toot: ~A~%" (format-toot title url))
                     (post-toot (format-toot entry-title-read url))
-                    (format t "~%")
-                    (when (or (null newest-date)
-                              (string> date-string newest-date))
-                      (setf newest-date date-string)))))
-              (when found-new-posts
-                (update-feed-info url newest-date)))
+                    (format t "~%"))
+                  (when (or (null stored-date)
+                            (date1<date2 stored-date date))
+                    (setf newest-date date))))
+              (when (and newest-date (not (date1=date2 newest-date stored-date)))
+                (format t "Updating ~A with the newest blog post date ~A" feed-url newest-date)
+                (update-feed-info feed-url newest-date)))
           (error (e)
             #+nil (format t "Error checking feed ~A: ~A~%" url e)))))))
 
