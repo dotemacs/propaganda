@@ -233,16 +233,6 @@ omitted."
 
 ;; check the content
 
-(defun html-body-to-text (url)
-  (multiple-value-bind (body status headers)
-      (http:get url)
-    (declare (ignore headers))
-    (when (= status 200)
-      (let* ((doc (plump:parse body))
-             (html-body (plump:get-elements-by-tag-name doc "body")))
-        (when (and html-body (> (length html-body) 0))
-          (plump:text (elt html-body 0)))))))
-
 (defun lisp-content-p (content)
   (search "lisp" content :test #'string-equal))
 
@@ -287,7 +277,7 @@ Google's Blogger."
                                              entry-title (plump:text entry-title)))
                        (date-string (local-time:format-timestring nil entry-date))
                        (url (-> entry-link feeder:url sanitize-url))
-                       (lisp-content (-> url html-body-to-text lisp-content-p)))
+                       (lisp-content (-> entry feeder:content lisp-content-p)))
                   (when (and lisp-content
                              (or (null stored-date)
                                  (string> date-string stored-date)))
