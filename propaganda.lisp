@@ -78,7 +78,8 @@
                  "https://mstmetent.blogspot.com/feeds/posts/default"
                  "http://langnostic.inaimathi.ca/feed/atom/by-tag/common-lisp"
                  ;; Not on Planet Lisp
-                 "https://dev.to/feed/vindarel")))
+                 "https://dev.to/feed/vindarel"
+                 "https://github.com/sbcl/sbcl/releases.atom")))
 
 (defun load-runtime-config ()
   "Refresh env-driven values into `*config*` at runtime."
