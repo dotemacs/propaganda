@@ -241,7 +241,9 @@ omitted."
 (defun strip-fractional-seconds (xml)
   "Strips fractional seconds in timestamps:
 
-2025-09-01T18:38:47.117-07:00 -> 2025-09-01T18:38:47-07:00
+2025-09-01T18:38:47.117-07:00 ->
+                   ^^^^
+2025-09-01T18:38:47-07:00
 
 (NOTE: that `.117' is stripped away)
 
