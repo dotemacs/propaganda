@@ -223,7 +223,7 @@ omitted."
            (format t "Error posting toot: ~A~%" e)))))))
 
 (defun format-toot (title link)
-  "Formats the `toot' & `link' for tooting"
+  "Formats the `title' & `link' for tooting"
   (let ((double-newline (make-string 2 :initial-element #\Newline)))
     (concatenate 'string title
                  double-newline
