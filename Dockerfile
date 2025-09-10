@@ -1,16 +1,18 @@
-# Build stage
-FROM debian:bookworm-slim AS builder
+# Build stage - Alpine
+FROM alpine:3.22.1 AS builder
+
 ARG SBCL_VERSION=2.5.8
 
-RUN apt-get update && apt-get -y install --no-install-recommends \
-    build-essential \
-    zlib1g-dev \
-    libzstd-dev \
-    time \
+RUN apk add --no-cache \
+    build-base \
+    linux-headers \
+    zlib-dev \
+    zstd-dev \
     curl \
     ca-certificates \
-    sbcl \
-    && rm -rf /var/lib/apt/lists/*
+    sbcl
+
+WORKDIR /app
 
 # Build SBCL from source with zstd support
 RUN curl -L -o sbcl.tar.gz https://github.com/sbcl/sbcl/archive/refs/tags/sbcl-${SBCL_VERSION}.tar.gz && \
@@ -20,37 +22,26 @@ RUN curl -L -o sbcl.tar.gz https://github.com/sbcl/sbcl/archive/refs/tags/sbcl-$
     echo '"${SBCL_VERSION}"' > version.lisp-expr && \
     sh make.sh --with-sb-core-compression --with-sb-xref-for-internals && \
     INSTALL_ROOT=/usr/local sh install.sh && \
-    apt-get purge -y sbcl build-essential time && apt-get autoremove -y && \
     cd .. && rm -rf sbcl-sbcl-${SBCL_VERSION}
-
-
-ENV PATH="/usr/local/bin:$PATH"
-RUN mkdir /app
-WORKDIR /app
 
 # Install Quicklisp
 RUN curl -O https://beta.quicklisp.org/quicklisp.lisp && \
-    sbcl --load quicklisp.lisp --eval '(quicklisp-quickstart:install)' --eval '(ql:add-to-init-file)' --quit && \
-    apt-get purge -y curl && apt-get autoremove -y
+    /usr/local/bin/sbcl --load quicklisp.lisp --eval '(quicklisp-quickstart:install)' --eval '(ql:add-to-init-file)' --quit
 
 COPY . .
-RUN sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
+RUN /usr/local/bin/sbcl --eval "(load \"~/quicklisp/setup.lisp\")" \
     --eval "(ql:quickload '(:dexador :cl-ppcre :feeder :arrows :puri :plump :cl-redis))" \
     --eval "(push #p\"/app/\" asdf:*central-registry*)" \
     --eval "(asdf:load-system :propaganda)" \
     --eval "(sb-ext:save-lisp-and-die \"propaganda\" :executable t :toplevel #'propaganda:main :compression t)" \
-    --quit && ls -la /app/propaganda && \
-    rm -rf ~/quicklisp ~/.cache && \
-    apt-get purge -y zlib1g-dev libzstd-dev ca-certificates && \
-    apt-get autoremove -y && \
-    rm -rf *.lisp *.asd documentation.md test-db.lisp
+    --quit && \
+    apk del build-base linux-headers zlib-dev zstd-dev curl && \
+    rm -rf ~/quicklisp ~/.cache /usr/local/lib/sbcl /usr/local/bin/sbcl *.lisp *.asd 2>/dev/null || true
 
-
-# Runtime stage
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libzstd1 libssl3 ca-certificates && \
-    rm -rf /var/lib/apt/lists/* && \
-    adduser --disabled-login --gecos "" --shell /bin/false propaganda
+# Runtime stage - minimal Alpine
+FROM alpine:3.22.1
+RUN apk add --no-cache ca-certificates zstd && \
+    adduser -D -s /bin/false propaganda
 COPY --from=builder /app/propaganda /propaganda
 RUN chmod +x /propaganda && chown propaganda:propaganda /propaganda
 USER propaganda
