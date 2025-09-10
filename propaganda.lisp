@@ -79,7 +79,9 @@
                  "http://langnostic.inaimathi.ca/feed/atom/by-tag/common-lisp"
                  ;; Not on Planet Lisp
                  "https://dev.to/feed/vindarel"
-                 "https://github.com/sbcl/sbcl/releases.atom")))
+                 "https://github.com/sbcl/sbcl/releases.atom"
+                 "https://github.com/Clozure/ccl/releases.atom"
+                 #|Go through the list and add all blogs from: https://common-lispers.hexstreamsoft.com|#)))
 
 (defun load-runtime-config ()
   "Refresh env-driven values into `*config*` at runtime."
