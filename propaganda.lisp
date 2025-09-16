@@ -305,7 +305,7 @@ entry has lisp content."
                     (format t "  Post date: ~A~%" date)
                     (format t "  Post URL: ~A~%" url)
                     (format t "  toot: ~A~%" (format-toot title url))
-                    (post-toot (format-toot entry-title-read url))
+                    (post-toot (format-toot title url))
                     (format t "~%"))
                   (when (or (null stored-date)
                             (date1<date2 stored-date date))
