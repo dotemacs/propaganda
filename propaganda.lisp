@@ -280,6 +280,13 @@ entry has lisp content."
 
 ;; process all
 
+(defun allow-any-posts-for (feed-url)
+  "A list of blogs whose content should be accepted regardless, because
+they post mostly relevant content and they don't need to be filtered."
+  (let ((white-listed-feeds '("https://scottlburson2.blogspot.com/atom.xml")))
+    (find feed-url white-listed-feeds :test #'string=)))
+
+
 (defun check-all-feeds-for-updates ()
   "Check all feeds for newer posts than what's recorded in the db."
   (let ((feeds (load-feeds-db)))
@@ -297,8 +304,10 @@ entry has lisp content."
               (dolist (entry (-> parsed-feed first feeder:content))
                 (multiple-value-bind (title url date lisp-content)
                     (extract-entry-values entry)
-                  (when (and lisp-content (or (null stored-date)
-                                              (date1<date2 stored-date date)))
+                  (when (and (or lisp-content
+                                 (allow-any-posts-for feed-url))
+                             (or (null stored-date)
+                                 (date1<date2 stored-date date)))
                     (format t "New post found in feed ~A~%" feed-url)
                     (format t "  Lisp content: ~A~%" lisp-content)
                     (format t "  Post title: ~A~%" title)
